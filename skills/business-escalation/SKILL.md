@@ -62,7 +62,7 @@ Use `sessions_send` to forward the question to the manager session. Include:
   "tool": "sessions_send",
   "args": {
     "label": "<manager-session-label>",
-    "message": "❓ Escalation from <channel>/<userId>:\n\nQuestion: \"<user question verbatim>\"\n\nI checked PUBLIC_MEMORY.md and the user's private memory — no matching answer found. Please reply with:\n1. The answer to send back to the user.\n2. Whether this should be saved to PUBLIC memory (yes/no).",
+    "message": "❓ Escalation from <channel>/<userId>:\n\nQuestion: \"<user question verbatim>\"\n\nI checked PUBLIC_MEMORY.md and the user's private memory — no matching answer found.\n\nPlease reply using this format:\nANSWER: <the answer to send back to the user>\nPUBLIC: yes|no  (save to public memory for all users?)\nNOTES: <optional internal notes, not shown to user>",
     "timeoutSeconds": 120
   }
 }
@@ -71,18 +71,39 @@ Use `sessions_send` to forward the question to the manager session. Include:
 Adjust `timeoutSeconds` based on urgency. Use `0` for fire-and-forget if the
 user can wait asynchronously.
 
+## Expected manager reply format
+
+Managers should reply to escalations using this structured format so the agent
+can parse the answer and routing decision unambiguously:
+
+```
+ANSWER: <full answer to send to the user>
+PUBLIC: yes|no
+NOTES: <optional — internal context not forwarded to the user>
+```
+
+- **`ANSWER:`** — the text to relay to the external user (required).
+- **`PUBLIC: yes`** — save to `business/PUBLIC_MEMORY.md` (any user can benefit from it).
+- **`PUBLIC: no`** — save only to the requesting user's private memory file.
+- **`NOTES:`** — optional internal context stored in the manager's own session
+  (never forwarded to external users).
+
+If the manager's reply does not follow this format, treat the entire reply as
+the `ANSWER`, default `PUBLIC` to `no` (private), and omit `NOTES`.
+
 ### Step 4 — Relay the manager's reply to the user
 
 Once `sessions_send` returns a reply:
 
-1. Send the answer back to the original user on their channel.
-2. Tell the user the answer came from the team (you do not need to identify the
+1. Parse the `ANSWER:` field (or full reply if unstructured).
+2. Send the answer back to the original user on their channel.
+3. Tell the user the answer came from the team (you do not need to identify the
    manager by name).
 
 ### Step 5 — Save the answer to memory
 
-After relaying the answer, ask the manager (or infer from their reply) whether
-the information is public or private:
+Based on the `PUBLIC:` field in the manager's reply (or defaulting to private
+if unstructured), save to the appropriate memory tier:
 
 **If public:**
 
