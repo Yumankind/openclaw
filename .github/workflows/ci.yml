@@ -44,7 +44,6 @@ jobs:
     runs-on: blacksmith-16vcpu-ubuntu-2404
     outputs:
       run_node: ${{ steps.scope.outputs.run_node }}
-      run_android: ${{ steps.scope.outputs.run_android }}
       run_skills_python: ${{ steps.scope.outputs.run_skills_python }}
     steps:
       - name: Checkout
@@ -351,50 +350,3 @@ jobs:
 
       - name: Audit production dependencies
         run: pre-commit run --all-files pnpm-audit-prod
-
-  android:
-    needs: [docs-scope, changed-scope]
-    if: needs.docs-scope.outputs.docs_only != 'true' && (github.event_name == 'push' || needs.changed-scope.outputs.run_android == 'true')
-    runs-on: blacksmith-16vcpu-ubuntu-2404
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - task: test
-            command: ./gradlew --no-daemon :app:testDebugUnitTest
-          - task: build
-            command: ./gradlew --no-daemon :app:assembleDebug
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          # setup-android's sdkmanager currently crashes on JDK 21 in CI.
-          java-version: 17
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          accept-android-sdk-licenses: false
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.11.1
-
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager --install \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Run Android ${{ matrix.task }}
-        working-directory: apps/android
-        run: ${{ matrix.command }}

@@ -47,15 +47,6 @@ jobs:
             needs_manual_build: false
             needs_autobuild: false
             config_file: ""
-          - language: java-kotlin
-            runs_on: blacksmith-16vcpu-ubuntu-2404
-            needs_node: false
-            needs_python: false
-            needs_java: true
-            needs_swift_tools: false
-            needs_manual_build: true
-            needs_autobuild: false
-            config_file: ""
           - language: swift
             runs_on: macos-latest
             needs_node: false
@@ -109,11 +100,6 @@ jobs:
       - name: Autobuild
         if: matrix.needs_autobuild
         uses: github/codeql-action/autobuild@v4
-
-      - name: Build Android for CodeQL
-        if: matrix.language == 'java-kotlin'
-        working-directory: apps/android
-        run: ./gradlew --no-daemon :app:assembleDebug
 
       - name: Build Swift for CodeQL
         if: matrix.language == 'swift'

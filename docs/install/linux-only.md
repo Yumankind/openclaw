@@ -95,10 +95,6 @@ All skills without an OS restriction remain. Skills explicitly supporting Linux:
 
 The source files `src/cli/windows-argv.ts` and `src/plugin-sdk/windows-spawn.ts` remain in the codebase. On Linux, `process.platform !== "win32"` causes all Windows-specific logic inside them to be bypassed automatically. Removing them would require refactoring callers with no runtime benefit.
 
-### Android app (kept)
-
-`apps/android/` is retained. Android is Linux-based and the app connects to a remote gateway as a client, which is a primary use case for server deployments.
-
 ---
 
 ## Minimum Linux configuration

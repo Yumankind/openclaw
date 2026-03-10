@@ -1,14 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
-/** @typedef {{ runNode: boolean; runAndroid: boolean; runSkillsPython: boolean }} ChangedScope */
+/** @typedef {{ runNode: boolean; runSkillsPython: boolean }} ChangedScope */
 
 const DOCS_PATH_RE = /^(docs\/|.*\.mdx?$)/;
 const SKILLS_PYTHON_SCOPE_RE = /^skills\//;
-const ANDROID_NATIVE_RE = /^apps\/android\//;
 const NODE_SCOPE_RE =
   /^(src\/|test\/|extensions\/|packages\/|scripts\/|ui\/|\.github\/|openclaw\.mjs$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|tsconfig.*\.json$|vitest.*\.ts$|tsdown\.config\.ts$|\.oxlintrc\.json$|\.oxfmtrc\.jsonc$)/;
-const NATIVE_ONLY_RE = /^(apps\/android\/|appcast\.xml$)/;
+const NATIVE_ONLY_RE = /^appcast\.xml$/;
 
 /**
  * @param {string[]} changedPaths
@@ -18,13 +17,11 @@ export function detectChangedScope(changedPaths) {
   if (!Array.isArray(changedPaths) || changedPaths.length === 0) {
     return {
       runNode: true,
-      runAndroid: true,
       runSkillsPython: true,
     };
   }
 
   let runNode = false;
-  let runAndroid = false;
   let runSkillsPython = false;
   let hasNonDocs = false;
   let hasNonNativeNonDocs = false;
@@ -45,10 +42,6 @@ export function detectChangedScope(changedPaths) {
       runSkillsPython = true;
     }
 
-    if (ANDROID_NATIVE_RE.test(path)) {
-      runAndroid = true;
-    }
-
     if (NODE_SCOPE_RE.test(path)) {
       runNode = true;
     }
@@ -62,7 +55,7 @@ export function detectChangedScope(changedPaths) {
     runNode = true;
   }
 
-  return { runNode, runAndroid, runSkillsPython };
+  return { runNode, runSkillsPython };
 }
 
 /**
@@ -93,7 +86,6 @@ export function writeGitHubOutput(scope, outputPath = process.env.GITHUB_OUTPUT)
     throw new Error("GITHUB_OUTPUT is required");
   }
   appendFileSync(outputPath, `run_node=${scope.runNode}\n`, "utf8");
-  appendFileSync(outputPath, `run_android=${scope.runAndroid}\n`, "utf8");
   appendFileSync(outputPath, `run_skills_python=${scope.runSkillsPython}\n`, "utf8");
 }
 

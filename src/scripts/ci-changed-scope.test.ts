@@ -7,7 +7,6 @@ const { detectChangedScope, listChangedPaths } =
   (await import("../../scripts/ci-changed-scope.mjs")) as unknown as {
     detectChangedScope: (paths: string[]) => {
       runNode: boolean;
-      runAndroid: boolean;
       runSkillsPython: boolean;
     };
     listChangedPaths: (base: string, head?: string) => string[];
@@ -28,7 +27,6 @@ describe("detectChangedScope", () => {
   it("fails safe when no paths are provided", () => {
     expect(detectChangedScope([])).toEqual({
       runNode: true,
-      runAndroid: true,
       runSkillsPython: true,
     });
   });
@@ -36,7 +34,6 @@ describe("detectChangedScope", () => {
   it("keeps all lanes off for docs-only changes", () => {
     expect(detectChangedScope(["docs/ci.md", "README.md"])).toEqual({
       runNode: false,
-      runAndroid: false,
       runSkillsPython: false,
     });
   });
@@ -44,15 +41,6 @@ describe("detectChangedScope", () => {
   it("enables node lane for node-relevant files", () => {
     expect(detectChangedScope(["src/plugins/runtime/index.ts"])).toEqual({
       runNode: true,
-      runAndroid: false,
-      runSkillsPython: false,
-    });
-  });
-
-  it("keeps node lane off for native-only changes", () => {
-    expect(detectChangedScope(["apps/android/app/build.gradle.kts"])).toEqual({
-      runNode: false,
-      runAndroid: true,
       runSkillsPython: false,
     });
   });
@@ -60,13 +48,11 @@ describe("detectChangedScope", () => {
   it("enables node lane for non-native non-doc files by fallback", () => {
     expect(detectChangedScope(["README.md"])).toEqual({
       runNode: false,
-      runAndroid: false,
       runSkillsPython: false,
     });
 
     expect(detectChangedScope(["assets/icon.png"])).toEqual({
       runNode: true,
-      runAndroid: false,
       runSkillsPython: false,
     });
   });
@@ -74,7 +60,6 @@ describe("detectChangedScope", () => {
   it("runs Python skill tests when skills change", () => {
     expect(detectChangedScope(["skills/openai-image-gen/scripts/test_gen.py"])).toEqual({
       runNode: true,
-      runAndroid: false,
       runSkillsPython: true,
     });
   });
