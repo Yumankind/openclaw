@@ -56,6 +56,13 @@ ${renderSwiftStringArray(policy.blockedPrefixes)}
 
 const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, "utf8") : null;
 
+// macOS app directory has been removed for Linux-only deployments; skip gracefully.
+const outputDir = path.dirname(outputPath);
+if (!fs.existsSync(outputDir)) {
+  console.log(`Skipping (macOS app directory not present): ${path.relative(repoRoot, outputPath)}`);
+  process.exit(0);
+}
+
 if (checkOnly) {
   if (current === generated) {
     console.log(`OK ${path.relative(repoRoot, outputPath)}`);
