@@ -591,6 +591,7 @@ async function runAttachmentEntries(params: {
   const attempts: MediaUnderstandingModelDecision[] = [];
   for (const entry of entries) {
     const entryType = entry.type ?? (entry.command ? "cli" : "provider");
+    console.log(`[media-understanding] trying ${capability} entry: type=${entryType} provider=${entry.provider} model=${entry.model} baseUrl=${entry.baseUrl}`);
     try {
       const result =
         entryType === "cli"
@@ -629,6 +630,7 @@ async function runAttachmentEntries(params: {
         buildModelDecision({ entry, entryType, outcome: "skipped", reason: "empty output" }),
       );
     } catch (err) {
+      console.error(`[media-understanding] ${capability} entry failed: provider=${entry.provider} model=${entry.model} error=${String(err)}`);
       if (isMediaUnderstandingSkipError(err)) {
         attempts.push(
           buildModelDecision({
@@ -638,9 +640,6 @@ async function runAttachmentEntries(params: {
             reason: `${err.reason}: ${err.message}`,
           }),
         );
-        if (shouldLogVerbose()) {
-          logVerbose(`Skipping ${capability} model due to ${err.reason}: ${err.message}`);
-        }
         continue;
       }
       attempts.push(
@@ -651,9 +650,6 @@ async function runAttachmentEntries(params: {
           reason: String(err),
         }),
       );
-      if (shouldLogVerbose()) {
-        logVerbose(`${capability} understanding failed: ${String(err)}`);
-      }
     }
   }
 
@@ -750,8 +746,10 @@ export async function runCapability(params: {
     config,
     providerRegistry: params.providerRegistry,
   });
+  console.log(`[media-understanding] ${capability}: resolveModelEntries returned ${entries.length} entries`);
   let resolvedEntries = entries;
   if (resolvedEntries.length === 0) {
+    console.log(`[media-understanding] ${capability}: falling back to resolveAutoEntries`);
     resolvedEntries = await resolveAutoEntries({
       cfg,
       agentDir: params.agentDir,

@@ -1310,15 +1310,16 @@ export const chatHandlers: GatewayRequestHandlers = {
 
     // Write non-image media (audio, video) to temp files so the media
     // understanding pipeline can pick them up via ctx.MediaPaths.
+    // Files MUST be inside /tmp/openclaw/ (the allowed media local root).
     const mediaTempPaths: string[] = [];
     const mediaMimeTypes: string[] = [];
     if (parsedMedia.length > 0) {
-      const { tmpdir } = await import("node:os");
-      const tmpDir = tmpdir();
+      const mediaDir = "/tmp/openclaw";
+      try { fs.mkdirSync(mediaDir, { recursive: true }); } catch { /* exists */ }
       for (const m of parsedMedia) {
         const ext = m.fileName?.includes(".") ? path.extname(m.fileName) : (extensionForMime(m.mimeType) ?? "");
-        const name = `openclaw-media-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-        const filePath = path.join(tmpDir, name);
+        const name = `media-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+        const filePath = path.join(mediaDir, name);
         fs.writeFileSync(filePath, Buffer.from(m.data, "base64"));
         mediaTempPaths.push(filePath);
         mediaMimeTypes.push(m.mimeType);
