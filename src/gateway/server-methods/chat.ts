@@ -35,7 +35,8 @@ import {
   isChatStopCommandText,
   resolveChatRunExpiresAtMs,
 } from "../chat-abort.js";
-import { type ChatImageContent, parseMessageWithAttachments } from "../chat-attachments.js";
+import { type ChatImageContent, type ChatMediaContent, parseMessageWithAttachments } from "../chat-attachments.js";
+import { extensionForMime } from "../../media/mime.js";
 import { stripEnvelopeFromMessage, stripEnvelopeFromMessages } from "../chat-sanitize.js";
 import { ADMIN_SCOPE } from "../method-scopes.js";
 import {
@@ -1291,6 +1292,7 @@ export const chatHandlers: GatewayRequestHandlers = {
     }
     let parsedMessage = inboundMessage;
     let parsedImages: ChatImageContent[] = [];
+    let parsedMedia: ChatMediaContent[] = [];
     if (normalizedAttachments.length > 0) {
       try {
         const parsed = await parseMessageWithAttachments(inboundMessage, normalizedAttachments, {
@@ -1299,9 +1301,27 @@ export const chatHandlers: GatewayRequestHandlers = {
         });
         parsedMessage = parsed.message;
         parsedImages = parsed.images;
+        parsedMedia = parsed.media;
       } catch (err) {
         respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, String(err)));
         return;
+      }
+    }
+
+    // Write non-image media (audio, video) to temp files so the media
+    // understanding pipeline can pick them up via ctx.MediaPaths.
+    const mediaTempPaths: string[] = [];
+    const mediaMimeTypes: string[] = [];
+    if (parsedMedia.length > 0) {
+      const { tmpdir } = await import("node:os");
+      const tmpDir = tmpdir();
+      for (const m of parsedMedia) {
+        const ext = m.fileName?.includes(".") ? path.extname(m.fileName) : (extensionForMime(m.mimeType) ?? "");
+        const name = `openclaw-media-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+        const filePath = path.join(tmpDir, name);
+        fs.writeFileSync(filePath, Buffer.from(m.data, "base64"));
+        mediaTempPaths.push(filePath);
+        mediaMimeTypes.push(m.mimeType);
       }
     }
     const rawSessionKey = p.sessionKey;
@@ -1435,6 +1455,11 @@ export const chatHandlers: GatewayRequestHandlers = {
         SenderName: clientInfo?.displayName,
         SenderUsername: clientInfo?.displayName,
         GatewayClientScopes: client?.connect?.scopes,
+        // Non-image media attachments (audio, video) saved as temp files
+        // for the media understanding pipeline.
+        ...(mediaTempPaths.length > 0
+          ? { MediaPaths: mediaTempPaths, MediaTypes: mediaMimeTypes }
+          : {}),
       };
 
       const agentId = resolveSessionAgentId({

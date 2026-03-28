@@ -14,9 +14,17 @@ export type ChatImageContent = {
   mimeType: string;
 };
 
+export type ChatMediaContent = {
+  data: string; // base64
+  mimeType: string;
+  fileName?: string;
+};
+
 export type ParsedMessageWithImages = {
   message: string;
   images: ChatImageContent[];
+  /** Non-image attachments (audio, video, etc.) for media understanding pipeline. */
+  media: ChatMediaContent[];
 };
 
 type AttachmentLog = {
@@ -106,6 +114,7 @@ export async function parseMessageWithAttachments(
   }
 
   const images: ChatImageContent[] = [];
+  const media: ChatMediaContent[] = [];
 
   for (const [idx, att] of attachments.entries()) {
     if (!att) {
@@ -120,28 +129,36 @@ export async function parseMessageWithAttachments(
 
     const providedMime = normalizeMime(mime);
     const sniffedMime = normalizeMime(await sniffMimeFromBase64(b64));
-    if (sniffedMime && !isImageMime(sniffedMime)) {
-      log?.warn(`attachment ${label}: detected non-image (${sniffedMime}), dropping`);
-      continue;
-    }
-    if (!sniffedMime && !isImageMime(providedMime)) {
+    const resolvedMime = sniffedMime ?? providedMime ?? mime;
+    const isImage = isImageMime(sniffedMime) || (!sniffedMime && isImageMime(providedMime));
+
+    if (isImage) {
+      if (sniffedMime && providedMime && sniffedMime !== providedMime) {
+        log?.warn(
+          `attachment ${label}: mime mismatch (${providedMime} -> ${sniffedMime}), using sniffed`,
+        );
+      }
+      images.push({
+        type: "image",
+        data: b64,
+        mimeType: resolvedMime,
+      });
+    } else if (!sniffedMime && !providedMime) {
+      // No detectable mime at all — drop as before.
       log?.warn(`attachment ${label}: unable to detect image mime type, dropping`);
       continue;
+    } else {
+      // Non-image attachment (audio, video, etc.) — route to media understanding pipeline.
+      log?.warn(`attachment ${label}: non-image (${resolvedMime}), routing to media pipeline`);
+      media.push({
+        data: b64,
+        mimeType: resolvedMime,
+        fileName: att.fileName ?? label,
+      });
     }
-    if (sniffedMime && providedMime && sniffedMime !== providedMime) {
-      log?.warn(
-        `attachment ${label}: mime mismatch (${providedMime} -> ${sniffedMime}), using sniffed`,
-      );
-    }
-
-    images.push({
-      type: "image",
-      data: b64,
-      mimeType: sniffedMime ?? providedMime ?? mime,
-    });
   }
 
-  return { message, images };
+  return { message, images, media };
 }
 
 /**
