@@ -1,20 +1,26 @@
 import { Type } from "@sinclair/typebox";
 import type { ChannelAgentTool } from "openclaw/plugin-sdk/channel-contract";
-import { startWebLoginWithQr, waitForWebLogin } from "../login-qr-api.js";
+import {
+  startWebLoginWithCode,
+  startWebLoginWithQr,
+  waitForWebLogin,
+} from "../login-qr-api.js";
 
 export function createWhatsAppLoginTool(): ChannelAgentTool {
   return {
     label: "WhatsApp Login",
     name: "whatsapp_login",
     ownerOnly: true,
-    description: "Generate a WhatsApp QR code for linking, or wait for the scan to complete.",
+    description:
+      "Link WhatsApp via QR code or phone-number pairing code, or wait for the pairing to complete.",
     // NOTE: Using Type.Unsafe for action enum instead of Type.Union([Type.Literal(...)]
     // because Claude API on Vertex AI rejects nested anyOf schemas as invalid JSON Schema.
     parameters: Type.Object({
-      action: Type.Unsafe<"start" | "wait">({
+      action: Type.Unsafe<"start" | "start_code" | "wait">({
         type: "string",
-        enum: ["start", "wait"],
+        enum: ["start", "start_code", "wait"],
       }),
+      phoneNumber: Type.Optional(Type.String()),
       timeoutMs: Type.Optional(Type.Number()),
       force: Type.Optional(Type.Boolean()),
     }),
@@ -30,6 +36,31 @@ export function createWhatsAppLoginTool(): ChannelAgentTool {
         return {
           content: [{ type: "text", text: result.message }],
           details: { connected: result.connected },
+        };
+      }
+
+      if (action === "start_code") {
+        const phoneNumber = (args as { phoneNumber?: string }).phoneNumber;
+        if (!phoneNumber) {
+          return {
+            content: [{ type: "text", text: "Phone number is required for pairing code login." }],
+            details: { pairingCode: false },
+          };
+        }
+        const result = await startWebLoginWithCode({
+          phoneNumber,
+          timeoutMs:
+            typeof (args as { timeoutMs?: unknown }).timeoutMs === "number"
+              ? (args as { timeoutMs?: number }).timeoutMs
+              : undefined,
+          force:
+            typeof (args as { force?: unknown }).force === "boolean"
+              ? (args as { force?: boolean }).force
+              : false,
+        });
+        return {
+          content: [{ type: "text", text: result.message }],
+          details: { pairingCode: Boolean(result.pairingCode) },
         };
       }
 

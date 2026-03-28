@@ -3,13 +3,14 @@ import {
   ErrorCodes,
   errorShape,
   formatValidationErrors,
+  validateWebLoginCodeStartParams,
   validateWebLoginStartParams,
   validateWebLoginWaitParams,
 } from "../protocol/index.js";
 import { formatForLog } from "../ws-log.js";
 import type { GatewayRequestHandlers, RespondFn } from "./types.js";
 
-const WEB_LOGIN_METHODS = new Set(["web.login.start", "web.login.wait"]);
+const WEB_LOGIN_METHODS = new Set(["web.login.start", "web.login.wait", "web.login.code.start"]);
 
 const resolveWebLoginProvider = () =>
   listChannelPlugins().find((plugin) =>
@@ -110,6 +111,45 @@ export const webHandlers: GatewayRequestHandlers = {
       if (result.connected) {
         await context.startChannel(provider.id, accountId);
       }
+      respond(true, result, undefined);
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatForLog(err)));
+    }
+  },
+  "web.login.code.start": async ({ params, respond, context }) => {
+    if (!validateWebLoginCodeStartParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid web.login.code.start params: ${formatValidationErrors(validateWebLoginCodeStartParams.errors)}`,
+        ),
+      );
+      return;
+    }
+    try {
+      const accountId = resolveAccountId(params);
+      const provider = resolveWebLoginProvider();
+      if (!provider) {
+        respondProviderUnavailable(respond);
+        return;
+      }
+      await context.stopChannel(provider.id, accountId);
+      if (!provider.gateway?.loginWithCodeStart) {
+        respondProviderUnsupported(respond, provider.id);
+        return;
+      }
+      const result = await provider.gateway.loginWithCodeStart({
+        phoneNumber: (params as { phoneNumber: string }).phoneNumber,
+        force: Boolean((params as { force?: boolean }).force),
+        timeoutMs:
+          typeof (params as { timeoutMs?: unknown }).timeoutMs === "number"
+            ? (params as { timeoutMs?: number }).timeoutMs
+            : undefined,
+        verbose: Boolean((params as { verbose?: boolean }).verbose),
+        accountId,
+      });
       respond(true, result, undefined);
     } catch (err) {
       respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatForLog(err)));

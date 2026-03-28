@@ -315,6 +315,16 @@ export const whatsappPlugin: ChannelPlugin<ResolvedWhatsAppAccount> =
           }),
         loginWithQrWait: async ({ accountId, timeoutMs }) =>
           await (await loadWhatsAppChannelRuntime()).waitForWebLogin({ accountId, timeoutMs }),
+        loginWithCodeStart: async ({ phoneNumber, accountId, force, timeoutMs, verbose }) =>
+          await (
+            await loadWhatsAppChannelRuntime()
+          ).startWebLoginWithCode({
+            phoneNumber,
+            accountId,
+            force,
+            timeoutMs,
+            verbose,
+          }),
         logoutAccount: async ({ account, runtime }) => {
           const cleared = await (
             await loadWhatsAppChannelRuntime()

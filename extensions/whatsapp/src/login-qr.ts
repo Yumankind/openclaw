@@ -217,6 +217,83 @@ export async function startWebLoginWithQr(
   };
 }
 
+/**
+ * Start a WhatsApp login using a phone-number pairing code instead of QR.
+ * The user enters the returned 8-digit code in WhatsApp → Linked Devices → Link with phone number.
+ */
+export async function startWebLoginWithCode(
+  opts: {
+    phoneNumber: string;
+    verbose?: boolean;
+    timeoutMs?: number;
+    force?: boolean;
+    accountId?: string;
+    runtime?: RuntimeEnv;
+  },
+): Promise<{ pairingCode?: string; message: string }> {
+  const runtime = opts.runtime ?? defaultRuntime;
+  const cfg = loadConfig();
+  const account = resolveWhatsAppAccount({ cfg, accountId: opts.accountId });
+  const hasWeb = await webAuthExists(account.authDir);
+  const selfId = readWebSelfId(account.authDir);
+  if (hasWeb && !opts.force) {
+    const who = selfId.e164 ?? selfId.jid ?? "unknown";
+    return {
+      message: `WhatsApp is already linked (${who}). Say "relink" if you want to pair again.`,
+    };
+  }
+
+  await resetActiveLogin(account.accountId);
+
+  // Strip any non-digit characters from the phone number (e.g. +, -, spaces).
+  const digits = opts.phoneNumber.replace(/\D/g, "");
+  if (!digits || digits.length < 7) {
+    return { message: `Invalid phone number: "${opts.phoneNumber}". Use international format, e.g. +5511999999999.` };
+  }
+
+  let sock: WaSocket;
+  try {
+    sock = await createWaSocket(false, Boolean(opts.verbose), {
+      authDir: account.authDir,
+      suppressQr: true,
+    });
+  } catch (err) {
+    return {
+      message: `Failed to start WhatsApp login: ${String(err)}`,
+    };
+  }
+
+  const login: ActiveLogin = {
+    accountId: account.accountId,
+    authDir: account.authDir,
+    isLegacyAuthDir: account.isLegacyAuthDir,
+    id: randomUUID(),
+    sock,
+    startedAt: Date.now(),
+    connected: false,
+    waitPromise: Promise.resolve(),
+    restartAttempted: false,
+    verbose: Boolean(opts.verbose),
+  };
+  activeLogins.set(account.accountId, login);
+  attachLoginWaiter(account.accountId, login);
+
+  try {
+    const code = await sock.requestPairingCode(digits);
+    const formatted = code.match(/.{1,4}/g)?.join("-") ?? code;
+    runtime.log(info(`WhatsApp pairing code: ${formatted}`));
+    return {
+      pairingCode: formatted,
+      message: `Enter this code in WhatsApp → Linked Devices → Link with phone number: ${formatted}`,
+    };
+  } catch (err) {
+    await resetActiveLogin(account.accountId);
+    return {
+      message: `Failed to get pairing code: ${String(err)}`,
+    };
+  }
+}
+
 export async function waitForWebLogin(
   opts: { timeoutMs?: number; runtime?: RuntimeEnv; accountId?: string } = {},
 ): Promise<{ connected: boolean; message: string }> {

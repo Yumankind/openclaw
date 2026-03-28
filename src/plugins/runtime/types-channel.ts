@@ -221,6 +221,7 @@ export type PluginRuntimeChannel = {
     sendPollWhatsApp: typeof import("./runtime-whatsapp-boundary.js").sendPollWhatsApp;
     loginWeb: typeof import("./runtime-whatsapp-boundary.js").loginWeb;
     startWebLoginWithQr: typeof import("./runtime-whatsapp-boundary.js").startWebLoginWithQr;
+    startWebLoginWithCode: typeof import("./runtime-whatsapp-boundary.js").startWebLoginWithCode;
     waitForWebLogin: typeof import("./runtime-whatsapp-boundary.js").waitForWebLogin;
     monitorWebChannel: typeof import("./runtime-whatsapp-boundary.js").monitorWebChannel;
     handleWhatsAppAction: typeof import("./runtime-whatsapp-boundary.js").handleWhatsAppAction;

@@ -344,6 +344,7 @@ export function installChannelSurfaceContractSuite(params: {
         gateway?.stopAccount,
         gateway?.loginWithQrStart,
         gateway?.loginWithQrWait,
+        gateway?.loginWithCodeStart,
         gateway?.logoutAccount,
       ].some((value) => typeof value === "function"),
     ).toBe(true);

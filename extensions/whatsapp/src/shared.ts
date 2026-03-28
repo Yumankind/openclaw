@@ -132,7 +132,7 @@ export function createWhatsAppPluginBase(params: {
       media: true,
     },
     reload: { configPrefixes: ["web"], noopPrefixes: ["channels.whatsapp"] },
-    gatewayMethods: ["web.login.start", "web.login.wait"],
+    gatewayMethods: ["web.login.start", "web.login.wait", "web.login.code.start"],
     configSchema: buildChannelConfigSchema(WhatsAppConfigSchema),
     config: {
       ...whatsappConfigAdapter,

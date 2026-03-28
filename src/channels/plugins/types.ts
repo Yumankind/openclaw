@@ -26,6 +26,7 @@ export type {
   ChannelGroupAdapter,
   ChannelHeartbeatAdapter,
   ChannelLifecycleAdapter,
+  ChannelLoginWithCodeStartResult,
   ChannelLoginWithQrStartResult,
   ChannelLoginWithQrWaitResult,
   ChannelLogoutContext,

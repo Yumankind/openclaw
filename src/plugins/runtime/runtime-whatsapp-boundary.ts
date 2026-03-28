@@ -250,6 +250,12 @@ export async function startWebLoginWithQr(
   return (await getHeavyExport("startWebLoginWithQr"))(...args);
 }
 
+export async function startWebLoginWithCode(
+  ...args: Parameters<WhatsAppHeavyModule["startWebLoginWithCode"]>
+): ReturnType<WhatsAppHeavyModule["startWebLoginWithCode"]> {
+  return (await getHeavyExport("startWebLoginWithCode"))(...args);
+}
+
 export async function waitForWaConnection(
   ...args: Parameters<WhatsAppHeavyModule["waitForWaConnection"]>
 ): ReturnType<WhatsAppHeavyModule["waitForWaConnection"]> {

@@ -18,6 +18,7 @@ type ReadWebSelfId = typeof import("./auth-store.js").readWebSelfId;
 type WebAuthExists = typeof import("./auth-store.js").webAuthExists;
 type LoginWeb = typeof import("./login.js").loginWeb;
 type StartWebLoginWithQr = typeof import("./login-qr.js").startWebLoginWithQr;
+type StartWebLoginWithCode = typeof import("./login-qr.js").startWebLoginWithCode;
 type WaitForWebLogin = typeof import("./login-qr.js").waitForWebLogin;
 type WhatsAppSetupWizard = typeof import("./setup-surface.js").whatsappSetupWizard;
 type MonitorWebChannel = typeof import("./auto-reply/monitor.js").monitorWebChannel;
@@ -64,6 +65,13 @@ export async function startWebLoginWithQr(
 ): ReturnType<StartWebLoginWithQr> {
   const { startWebLoginWithQr } = await loadWhatsAppLoginQr();
   return await startWebLoginWithQr(...args);
+}
+
+export async function startWebLoginWithCode(
+  ...args: Parameters<StartWebLoginWithCode>
+): ReturnType<StartWebLoginWithCode> {
+  const { startWebLoginWithCode } = await loadWhatsAppLoginQr();
+  return await startWebLoginWithCode(...args);
 }
 
 export async function waitForWebLogin(
