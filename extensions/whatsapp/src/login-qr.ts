@@ -244,6 +244,8 @@ export async function startWebLoginWithCode(
   }
 
   await resetActiveLogin(account.accountId);
+  // Flush any pending creds writes from the previous session before starting fresh.
+  await waitForCredsSaveQueueWithTimeout(account.authDir);
 
   // Strip any non-digit characters from the phone number (e.g. +, -, spaces).
   const digits = opts.phoneNumber.replace(/\D/g, "");
@@ -260,7 +262,7 @@ export async function startWebLoginWithCode(
 
   const pairingTimer = setTimeout(
     () => rejectPairingCode?.(new Error("Timed out waiting for pairing code")),
-    Math.max(opts.timeoutMs ?? 30_000, 5000),
+    Math.max(opts.timeoutMs ?? 60_000, 10_000),
   );
 
   let sock: WaSocket;
@@ -302,14 +304,12 @@ export async function startWebLoginWithCode(
     runtime.log(info(`WhatsApp pairing code: ${formatted}`));
     return {
       pairingCode: formatted,
-      fork: "moltworker-v1",
-      message: `Enter this code in WhatsApp → Linked Devices → Link with phone number: ${formatted}`,
+      message: `[mv1] Code: ${formatted}`,
     };
   } catch (err) {
     await resetActiveLogin(account.accountId);
     return {
-      fork: "moltworker-v1",
-      message: `Failed to get pairing code: ${String(err)}`,
+      message: `[mv1] Failed to get pairing code: ${String(err)}`,
     };
   }
 }

@@ -142,12 +142,20 @@ export async function createWaSocket(
     (update: Partial<import("@whiskeysockets/baileys").ConnectionState>) => {
       try {
         const { connection, lastDisconnect, qr } = update;
+        sessionLogger.info(
+          { connection, qr: Boolean(qr), pairingPhone: Boolean(opts.pairingPhoneNumber), pairingRequested },
+          "connection.update",
+        );
         if (qr) {
           // When using phone-number pairing, request the code instead of showing QR.
           if (opts.pairingPhoneNumber && !pairingRequested) {
             pairingRequested = true;
+            sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code");
             sock.requestPairingCode(opts.pairingPhoneNumber).then(
-              (code: string) => opts.onPairingCode?.(code),
+              (code: string) => {
+                sessionLogger.info({ code }, "pairing code received");
+                opts.onPairingCode?.(code);
+              },
               (err: unknown) =>
                 sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
             );
