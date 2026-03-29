@@ -101,7 +101,13 @@ async function safeSaveCreds(
 export async function createWaSocket(
   printQr: boolean,
   verbose: boolean,
-  opts: { authDir?: string; onQr?: (qr: string) => void; suppressQr?: boolean } = {},
+  opts: {
+    authDir?: string;
+    onQr?: (qr: string) => void;
+    suppressQr?: boolean;
+    pairingPhoneNumber?: string;
+    onPairingCode?: (code: string) => void;
+  } = {},
 ): Promise<ReturnType<typeof makeWASocket>> {
   const baseLogger = getChildLogger(
     { module: "baileys" },
@@ -113,6 +119,7 @@ export async function createWaSocket(
   const authDir = resolveUserPath(opts.authDir ?? resolveDefaultWebAuthDir());
   await ensureDir(authDir);
   const sessionLogger = getChildLogger({ module: "web-session" });
+  let pairingRequested = false;
   maybeRestoreCredsFromBackup(authDir);
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion();
@@ -136,6 +143,16 @@ export async function createWaSocket(
       try {
         const { connection, lastDisconnect, qr } = update;
         if (qr) {
+          // When using phone-number pairing, request the code instead of showing QR.
+          if (opts.pairingPhoneNumber && !pairingRequested) {
+            pairingRequested = true;
+            sock.requestPairingCode(opts.pairingPhoneNumber).then(
+              (code: string) => opts.onPairingCode?.(code),
+              (err: unknown) =>
+                sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
+            );
+            return;
+          }
           opts.onQr?.(qr);
           if (printQr) {
             console.log("Scan this QR in WhatsApp (Linked Devices):");

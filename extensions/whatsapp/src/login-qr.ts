@@ -251,13 +251,31 @@ export async function startWebLoginWithCode(
     return { message: `Invalid phone number: "${opts.phoneNumber}". Use international format, e.g. +5511999999999.` };
   }
 
+  let resolvePairingCode: ((code: string) => void) | null = null;
+  let rejectPairingCode: ((err: Error) => void) | null = null;
+  const pairingCodePromise = new Promise<string>((resolve, reject) => {
+    resolvePairingCode = resolve;
+    rejectPairingCode = reject;
+  });
+
+  const pairingTimer = setTimeout(
+    () => rejectPairingCode?.(new Error("Timed out waiting for pairing code")),
+    Math.max(opts.timeoutMs ?? 30_000, 5000),
+  );
+
   let sock: WaSocket;
   try {
     sock = await createWaSocket(false, Boolean(opts.verbose), {
       authDir: account.authDir,
       suppressQr: true,
+      pairingPhoneNumber: digits,
+      onPairingCode: (code: string) => {
+        clearTimeout(pairingTimer);
+        resolvePairingCode?.(code);
+      },
     });
   } catch (err) {
+    clearTimeout(pairingTimer);
     return {
       message: `Failed to start WhatsApp login: ${String(err)}`,
     };
@@ -279,7 +297,7 @@ export async function startWebLoginWithCode(
   attachLoginWaiter(account.accountId, login);
 
   try {
-    const code = await sock.requestPairingCode(digits);
+    const code = await pairingCodePromise;
     const formatted = code.match(/.{1,4}/g)?.join("-") ?? code;
     runtime.log(info(`WhatsApp pairing code: ${formatted}`));
     return {
