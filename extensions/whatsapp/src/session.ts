@@ -148,22 +148,20 @@ export async function createWaSocket(
       try {
         const { connection, lastDisconnect, qr } = update;
         if (qr) {
-          // When using phone-number pairing, wait a moment for the WS to fully
-          // stabilize, then request the pairing code. WhatsApp rejects codes
-          // requested too early or on an unstable connection.
+          // When using phone-number pairing, request the code on first QR event.
+          // The Baileys fork (Yumankind/Baileys) handles the pair-device readiness
+          // gate internally, so no setTimeout delay is needed.
           if (opts.pairingPhoneNumber && !pairingRequested) {
             pairingRequested = true;
-            setTimeout(() => {
-              sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code");
-              sock.requestPairingCode(opts.pairingPhoneNumber!).then(
-                (code: string) => {
-                  sessionLogger.info({ code }, "pairing code received");
-                  opts.onPairingCode?.(code);
-                },
-                (err: unknown) =>
-                  sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
-              );
-            }, 3000);
+            sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code");
+            sock.requestPairingCode(opts.pairingPhoneNumber!).then(
+              (code: string) => {
+                sessionLogger.info({ code }, "pairing code received");
+                opts.onPairingCode?.(code);
+              },
+              (err: unknown) =>
+                sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
+            );
             return;
           }
           opts.onQr?.(qr);
