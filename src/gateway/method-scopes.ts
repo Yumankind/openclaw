@@ -136,6 +136,7 @@ const METHOD_SCOPE_GROUPS: Record<OperatorScope, readonly string[]> = {
     "chat.inject",
     "web.login.start",
     "web.login.wait",
+    "web.login.code.start",
     "set-heartbeats",
     "system-event",
     "agents.files.set",
