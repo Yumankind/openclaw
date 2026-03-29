@@ -302,11 +302,13 @@ export async function startWebLoginWithCode(
     runtime.log(info(`WhatsApp pairing code: ${formatted}`));
     return {
       pairingCode: formatted,
+      fork: "moltworker-v1",
       message: `Enter this code in WhatsApp → Linked Devices → Link with phone number: ${formatted}`,
     };
   } catch (err) {
     await resetActiveLogin(account.accountId);
     return {
+      fork: "moltworker-v1",
       message: `Failed to get pairing code: ${String(err)}`,
     };
   }
