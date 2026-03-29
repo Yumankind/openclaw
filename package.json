@@ -861,6 +861,7 @@
       "@tloncorp/api",
       "@tloncorp/tlon-skill",
       "@whiskeysockets/baileys",
+      "baileys",
       "authenticate-pam",
       "esbuild",
       "node-llama-cpp",

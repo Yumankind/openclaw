@@ -10,6 +10,7 @@ onlyBuiltDependencies:
   - "@napi-rs/canvas"
   - "@tloncorp/api"
   - "@whiskeysockets/baileys"
+  - baileys
   - authenticate-pam
   - esbuild
   - node-llama-cpp

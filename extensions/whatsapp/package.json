@@ -4,7 +4,7 @@
   "description": "OpenClaw WhatsApp channel plugin",
   "type": "module",
   "dependencies": {
-    "@whiskeysockets/baileys": "github:Yumankind/Baileys",
+    "@whiskeysockets/baileys": "github:mtAlves/Baileys#fix/pairing-code",
     "jimp": "^1.6.0"
   },
   "devDependencies": {
