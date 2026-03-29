@@ -71,6 +71,7 @@ export function createSignalPluginBase(params: {
   | "capabilities"
   | "streaming"
   | "reload"
+  | "gatewayMethods"
   | "configSchema"
   | "config"
   | "security"
@@ -91,6 +92,7 @@ export function createSignalPluginBase(params: {
       blockStreamingCoalesceDefaults: { minChars: 1500, idleMs: 1000 },
     },
     reload: { configPrefixes: ["channels.signal"] },
+    gatewayMethods: ["web.login.start", "web.login.wait"],
     configSchema: buildChannelConfigSchema(SignalConfigSchema),
     config: {
       ...signalConfigAdapter,
@@ -114,6 +116,7 @@ export function createSignalPluginBase(params: {
     | "capabilities"
     | "streaming"
     | "reload"
+    | "gatewayMethods"
     | "configSchema"
     | "config"
     | "security"

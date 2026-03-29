@@ -12,14 +12,25 @@ import type { GatewayRequestHandlers, RespondFn } from "./types.js";
 
 const WEB_LOGIN_METHODS = new Set(["web.login.start", "web.login.wait", "web.login.code.start"]);
 
-const resolveWebLoginProvider = () =>
-  listChannelPlugins().find((plugin) =>
+const resolveWebLoginProvider = (channel?: string) => {
+  const candidates = listChannelPlugins().filter((plugin) =>
     (plugin.gatewayMethods ?? []).some((method) => WEB_LOGIN_METHODS.has(method)),
-  ) ?? null;
+  );
+  if (channel) {
+    return candidates.find((p) => p.id === channel) ?? null;
+  }
+  return candidates[0] ?? null;
+};
 
 function resolveAccountId(params: unknown): string | undefined {
   return typeof (params as { accountId?: unknown }).accountId === "string"
     ? (params as { accountId?: string }).accountId
+    : undefined;
+}
+
+function resolveChannel(params: unknown): string | undefined {
+  return typeof (params as { channel?: unknown }).channel === "string"
+    ? (params as { channel?: string }).channel
     : undefined;
 }
 
@@ -54,7 +65,8 @@ export const webHandlers: GatewayRequestHandlers = {
     }
     try {
       const accountId = resolveAccountId(params);
-      const provider = resolveWebLoginProvider();
+      const channel = resolveChannel(params);
+      const provider = resolveWebLoginProvider(channel);
       if (!provider) {
         respondProviderUnavailable(respond);
         return;
@@ -92,7 +104,8 @@ export const webHandlers: GatewayRequestHandlers = {
     }
     try {
       const accountId = resolveAccountId(params);
-      const provider = resolveWebLoginProvider();
+      const channel = resolveChannel(params);
+      const provider = resolveWebLoginProvider(channel);
       if (!provider) {
         respondProviderUnavailable(respond);
         return;
@@ -130,7 +143,8 @@ export const webHandlers: GatewayRequestHandlers = {
     }
     try {
       const accountId = resolveAccountId(params);
-      const provider = resolveWebLoginProvider();
+      const channel = resolveChannel(params);
+      const provider = resolveWebLoginProvider(channel);
       if (!provider) {
         respondProviderUnavailable(respond);
         return;

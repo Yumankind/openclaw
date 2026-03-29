@@ -274,6 +274,7 @@ export const signalPlugin: ChannelPlugin<ResolvedSignalAccount, SignalProbe> =
         setupWizard: signalSetupWizard,
         setup: signalSetupAdapter,
       }),
+      gatewayMethods: ["web.login.start", "web.login.wait"],
       actions: signalMessageActions,
       allowlist: buildDmGroupAccountAllowlistAdapter({
         channelId: "signal",
@@ -338,6 +339,19 @@ export const signalPlugin: ChannelPlugin<ResolvedSignalAccount, SignalProbe> =
             abortSignal: ctx.abortSignal,
             mediaMaxMb: account.config.mediaMaxMb,
           });
+        },
+        loginWithQrStart: async ({ accountId, force, timeoutMs, verbose }) => {
+          const { startSignalLinkWithQr } = await import("./login-qr.js");
+          return await startSignalLinkWithQr({
+            accountId,
+            force,
+            timeoutMs,
+            verbose,
+          });
+        },
+        loginWithQrWait: async ({ accountId, timeoutMs }) => {
+          const { waitForSignalLink } = await import("./login-qr.js");
+          return await waitForSignalLink({ accountId, timeoutMs });
         },
       },
     },
