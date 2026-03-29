@@ -246,6 +246,14 @@ export async function startWebLoginWithCode(
   await resetActiveLogin(account.accountId);
   // Flush any pending creds writes from the previous session before starting fresh.
   await waitForCredsSaveQueueWithTimeout(account.authDir);
+  // Clear stale auth state so Baileys starts a completely fresh session.
+  // Without this, leftover creds from a previous attempt cause WhatsApp to
+  // reject the pairing code with "not possible to associate the device".
+  await logoutWeb({
+    authDir: account.authDir,
+    isLegacyAuthDir: account.isLegacyAuthDir,
+    runtime,
+  });
 
   // Strip any non-digit characters from the phone number (e.g. +, -, spaces).
   const digits = opts.phoneNumber.replace(/\D/g, "");

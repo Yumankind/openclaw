@@ -123,6 +123,11 @@ export async function createWaSocket(
   maybeRestoreCredsFromBackup(authDir);
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion();
+  // Use a Chrome-like browser fingerprint for phone-number pairing — WhatsApp
+  // rejects pairing codes from non-standard browser identifiers.
+  const browser: [string, string, string] = opts.pairingPhoneNumber
+    ? ["Ubuntu", "Chrome", "20.0.04"]
+    : ["openclaw", "cli", VERSION];
   const sock = makeWASocket({
     auth: {
       creds: state.creds,
@@ -131,10 +136,25 @@ export async function createWaSocket(
     version,
     logger,
     printQRInTerminal: false,
-    browser: ["openclaw", "cli", VERSION],
+    browser,
     syncFullHistory: false,
     markOnlineOnConnect: false,
   });
+
+  // For phone-number pairing, request the code immediately after socket creation
+  // (before the QR event fires). This matches the pattern that works with Baileys.
+  if (opts.pairingPhoneNumber && !state.creds.registered) {
+    pairingRequested = true;
+    sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code (pre-QR)");
+    sock.requestPairingCode(opts.pairingPhoneNumber).then(
+      (code: string) => {
+        sessionLogger.info({ code }, "pairing code received");
+        opts.onPairingCode?.(code);
+      },
+      (err: unknown) =>
+        sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
+    );
+  }
 
   sock.ev.on("creds.update", () => enqueueSaveCreds(authDir, saveCreds, sessionLogger));
   sock.ev.on(
@@ -142,15 +162,11 @@ export async function createWaSocket(
     (update: Partial<import("@whiskeysockets/baileys").ConnectionState>) => {
       try {
         const { connection, lastDisconnect, qr } = update;
-        sessionLogger.info(
-          { connection, qr: Boolean(qr), pairingPhone: Boolean(opts.pairingPhoneNumber), pairingRequested },
-          "connection.update",
-        );
         if (qr) {
-          // When using phone-number pairing, request the code instead of showing QR.
+          // Fallback: if pairing wasn't requested pre-QR, try on first QR event.
           if (opts.pairingPhoneNumber && !pairingRequested) {
             pairingRequested = true;
-            sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code");
+            sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code (on QR)");
             sock.requestPairingCode(opts.pairingPhoneNumber).then(
               (code: string) => {
                 sessionLogger.info({ code }, "pairing code received");
