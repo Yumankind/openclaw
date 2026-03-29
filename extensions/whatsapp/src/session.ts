@@ -141,21 +141,6 @@ export async function createWaSocket(
     markOnlineOnConnect: false,
   });
 
-  // For phone-number pairing, request the code immediately after socket creation
-  // (before the QR event fires). This matches the pattern that works with Baileys.
-  if (opts.pairingPhoneNumber && !state.creds.registered) {
-    pairingRequested = true;
-    sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code (pre-QR)");
-    sock.requestPairingCode(opts.pairingPhoneNumber).then(
-      (code: string) => {
-        sessionLogger.info({ code }, "pairing code received");
-        opts.onPairingCode?.(code);
-      },
-      (err: unknown) =>
-        sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
-    );
-  }
-
   sock.ev.on("creds.update", () => enqueueSaveCreds(authDir, saveCreds, sessionLogger));
   sock.ev.on(
     "connection.update",
@@ -163,18 +148,22 @@ export async function createWaSocket(
       try {
         const { connection, lastDisconnect, qr } = update;
         if (qr) {
-          // Fallback: if pairing wasn't requested pre-QR, try on first QR event.
+          // When using phone-number pairing, wait a moment for the WS to fully
+          // stabilize, then request the pairing code. WhatsApp rejects codes
+          // requested too early or on an unstable connection.
           if (opts.pairingPhoneNumber && !pairingRequested) {
             pairingRequested = true;
-            sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code (on QR)");
-            sock.requestPairingCode(opts.pairingPhoneNumber).then(
-              (code: string) => {
-                sessionLogger.info({ code }, "pairing code received");
-                opts.onPairingCode?.(code);
-              },
-              (err: unknown) =>
-                sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
-            );
+            setTimeout(() => {
+              sessionLogger.info({ phone: opts.pairingPhoneNumber }, "requesting pairing code");
+              sock.requestPairingCode(opts.pairingPhoneNumber!).then(
+                (code: string) => {
+                  sessionLogger.info({ code }, "pairing code received");
+                  opts.onPairingCode?.(code);
+                },
+                (err: unknown) =>
+                  sessionLogger.error({ error: String(err) }, "requestPairingCode failed"),
+              );
+            }, 3000);
             return;
           }
           opts.onQr?.(qr);
